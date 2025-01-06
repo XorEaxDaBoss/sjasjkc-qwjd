@@ -1,0 +1,16 @@
+{
+  "1024447089": {
+    "username": "x3EF8",
+    "first_name": "Ohayo™",
+    "first_seen": "2025-01-01T20:32:36.629949",
+    "last_seen": "2025-01-01T21:01:08.787826",
+    "command_count": 30,
+    "commands_used": {
+      "/start": 11,
+      "text_message": 15,
+      "/filtercountry": 2,
+      "change_language_to_zh": 1,
+      "change_language_to_en": 1
+    }
+  }
+}
