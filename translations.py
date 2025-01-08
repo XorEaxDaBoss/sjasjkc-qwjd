@@ -48,7 +48,7 @@ MESSAGES = {
                      "➜ Info: {} - {} - {}\n"
                      "➜ Issuer: {}\n"
                      "➜ Country: {} {}\n\n"
-                     "Checked by @cleancc_bot",
+                     "Checked by @CC_Cleanerbot",
         'error_occurred': "An error occurred. Please try again.",
         'user_not_identified': "Error: Could not identify user.",
         'language_changed': "Language changed to English 🇺🇸",
@@ -102,7 +102,7 @@ MESSAGES = {
                      "➜ 信息：{} - {} - {}\n"
                      "➜ 发卡行：{}\n"
                      "➜ 国家：{} {}\n\n"
-                     "由 @cleancc_bot 查询",
+                     "由 @CC_Cleanerbot 查询",
         'error_occurred': "发生错误。请重试。",
         'user_not_identified': "错误：无法识别用户。",
         'language_changed': "语言已更改为中文 🇨🇳",
