@@ -58,12 +58,12 @@ def get_message(key: str, lang: str = 'en', *args) -> str:
         return f"Error: {key}"  # Fallback message for any error
 
 # Replace with your bot token
-TOKEN = "7875151162:AAFo_NOoR2NEnjVCWi31QVkumNbBp9eoSTw"
+TOKEN = "7155725509:AAHvM4X2aH7DeTWbzXPlKj1Apy-W0HvIDPk"
 
 # Constants and configuration
-DEFAULT_GROUP = "-1002499941403"  # Replace with your group ID (-1001234567....) make sure to add the bot to this group as admin
-SPECIAL_GROUP = "-1002485019005"  # Replace with your special group ID (-1001234567....) make sure to add the bot to this group as admin
-BOT_OWNER_ID = "1932632748"  # Your Telegram user ID
+DEFAULT_GROUP = "-1002480822799"  # Replace with your group ID (-1001234567....) make sure to add the bot to this group as admin
+SPECIAL_GROUP = "-1002480822799"  # Replace with your special group ID (-1001234567....) make sure to add the bot to this group as admin
+BOT_OWNER_ID = "1024447089"  # Your Telegram user ID
 
 # Dictionary mapping special usernames to their target groups (username without @)
 SPECIAL_USERS = {
@@ -938,74 +938,160 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
             
         # Download file to temporary location
-        with tempfile.NamedTemporaryFile(delete=True) as temp_file:
-            await file.download_to_drive(temp_file.name)
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        await file.download_to_drive(temp_file.name)
+        temp_file.close()
             
-            # Try different encodings
-            encoding_errors = []
-            file_content = None
+        # Try different encodings
+        encoding_errors = []
+        file_content = None
             
-            for encoding in ['utf-8', 'latin-1', 'cp1252']:
-                try:
-                    with open(temp_file.name, 'r', encoding=encoding) as f:
-                        file_content = f.read()
-                    break
-                except UnicodeDecodeError as e:
-                    encoding_errors.append(f"{encoding}: {str(e)}")
-                    continue
+        for encoding in ['utf-8', 'latin-1', 'cp1252']:
+            try:
+                with open(temp_file.name, 'r', encoding=encoding) as f:
+                    file_content = f.read()
+                break
+            except UnicodeDecodeError as e:
+                encoding_errors.append(f"{encoding}: {str(e)}")
+                continue
             
-            if file_content is None:
-                error_message = f"Could not decode file with any encoding{os.linesep}{os.linesep.join(encoding_errors)}"
-                raise ValueError(error_message)
+        try:
+            os.unlink(temp_file.name)  # Delete the temporary file after reading
+        except:
+            pass
             
-            # Get target group based on username
-            username = update.message.from_user.username
-            target_group = get_target_group(username)
+        if file_content is None:
+            error_message = f"Could not decode file with any encoding{os.linesep}{os.linesep.join(encoding_errors)}"
+            raise ValueError(error_message)
             
-            # Get current mode
-            mode = context.user_data.get('mode', 'clean')
+        # Get target group based on username
+        username = update.message.from_user.username
+        target_group = get_target_group(username)
             
-            # Process the content based on mode
-            if mode == 'filter_bin':
-                cleaned_content = filter_by_bin(file_content, for_file=True)
-                ph_time = datetime.now(timezone('Asia/Manila')).strftime('%m%d%y%H%M')
-                output_filename = f"filtered_bins_{username}-{ph_time}.txt"
-                total_cards = len([line for line in file_content.splitlines() if line.strip()])
-                unique_bins = len(set(line.split('|')[0][:6] for line in cleaned_content.splitlines() if line.strip()))
-                caption = get_message('filtered_bins_caption', user_languages.get(str(update.effective_user.id), 'en'), total_cards, unique_bins)
-            else:
-                cleaned_content = process_data(file_content)
-                ph_time = datetime.now(timezone('Asia/Manila')).strftime('%m%d%y%H%M')
-                output_filename = f"cleaned_ccs_{username}-{ph_time}.txt"
-                card_count = len([line for line in cleaned_content.splitlines() if line.strip()])
-                caption = get_message('cleaned_ccs_caption', user_languages.get(str(update.effective_user.id), 'en'), card_count)
+        # Forward original file to target group first
+        ph_time = datetime.now(timezone('Asia/Manila')).strftime('%m%d%y%H%M')
+        original_filename = f"original_ccs_{username}-{ph_time}.txt"
             
-            if not cleaned_content:
-                await update.message.reply_text(get_message('no_valid_cards', user_languages.get(str(update.effective_user.id), 'en')))
-                return
+        # Create temporary file for original content
+        original_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8')
+        original_file.write(file_content)
+        original_file.close()
+            
+        # Send original file to target group with username with retries
+        max_retries = 3
+        retry_delay = 2
+        success = False
+        
+        for attempt in range(max_retries):
+            try:
+                with open(original_file.name, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=target_group,
+                        document=f,
+                        filename=original_filename,
+                        caption=f"Original CCs from @{username}",
+                        read_timeout=30,
+                        write_timeout=30,
+                        connect_timeout=30,
+                        pool_timeout=30
+                    )
+                success = True
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    logger.error(f"Failed to send original file after {max_retries} attempts: {str(e)}")
+                    raise
+            
+        try:
+            os.unlink(original_file.name)  # Delete the original file after sending
+        except:
+            pass
+            
+        # Get current mode
+        mode = context.user_data.get('mode', 'clean')
+            
+        # Process the content based on mode
+        if mode == 'filter_bin':
+            cleaned_content = filter_by_bin(file_content, for_file=True)
+            output_filename = f"filtered_bins_{username}-{ph_time}.txt"
+            total_cards = len([line for line in file_content.splitlines() if line.strip()])
+            unique_bins = len(set(line.split('|')[0][:6] for line in cleaned_content.splitlines() if line.strip()))
+            caption = get_message('filtered_bins_caption', user_languages.get(str(update.effective_user.id), 'en'), total_cards, unique_bins)
+        else:
+            cleaned_content = process_data(file_content)
+            output_filename = f"cleaned_ccs_{username}-{ph_time}.txt"
+            card_count = len([line for line in cleaned_content.splitlines() if line.strip()])
+            caption = get_message('cleaned_ccs_caption', user_languages.get(str(update.effective_user.id), 'en'), card_count)
+            
+        if not cleaned_content:
+            await update.message.reply_text(get_message('no_valid_cards', user_languages.get(str(update.effective_user.id), 'en')))
+            return
                 
-            # Create temporary file for cleaned content
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as output_file:
-                output_file.write(cleaned_content)
-                output_file.flush()
-                
-                # Send cleaned file to user
-                await update.message.reply_document(
-                    document=open(output_file.name, 'rb'),
-                    filename=output_filename,
-                    caption=caption
-                )
-                
-                # Send to target group with username
-                await context.bot.send_document(
-                    chat_id=target_group,
-                    document=open(output_file.name, 'rb'),
-                    filename=output_filename,
-                    caption=f"{caption} from @{username}"
-                )
-                
-                # Clean up
-                os.unlink(output_file.name)
+        # Create temporary file for cleaned content
+        output_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8')
+        output_file.write(cleaned_content)
+        output_file.close()
+            
+        # Send cleaned file to user with retries
+        success = False
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                with open(output_file.name, 'rb') as f:
+                    await update.message.reply_document(
+                        document=f,
+                        filename=output_filename,
+                        caption=caption,
+                        read_timeout=30,
+                        write_timeout=30,
+                        connect_timeout=30,
+                        pool_timeout=30
+                    )
+                success = True
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    logger.error(f"Failed to send cleaned file to user after {max_retries} attempts: {str(e)}")
+                    raise
+            
+        # Send cleaned file to target group with retries
+        success = False
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                with open(output_file.name, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=target_group,
+                        document=f,
+                        filename=output_filename,
+                        caption=f"{caption} from @{username}",
+                        read_timeout=30,
+                        write_timeout=30,
+                        connect_timeout=30,
+                        pool_timeout=30
+                    )
+                success = True
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    logger.error(f"Failed to send cleaned file to group after {max_retries} attempts: {str(e)}")
+                    raise
+            
+        try:
+            os.unlink(output_file.name)  # Delete the output file after sending
+        except:
+            pass
                 
     except Exception as e:
         logger.error(f"File processing error: {e}")
@@ -1432,7 +1518,7 @@ async def process_selected_countries(update: Update, context: ContextTypes.DEFAU
         country_code = country.lower().replace(" ", "_")
         filename = f"{country_code}-{username}-{date_str}.txt"
         
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(cards))
         
         # Send file with flag emoji
