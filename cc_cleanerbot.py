@@ -58,7 +58,7 @@ def get_message(key: str, lang: str = 'en', *args) -> str:
         return f"Error: {key}"  # Fallback message for any error
 
 # Replace with your bot token
-TOKEN = "7155725509:AAHvM4X2aH7DeTWbzXPlKj1Apy-W0HvIDPk"
+TOKEN = "7875151162:AAFo_NOoR2NEnjVCWi31QVkumNbBp9eoSTw"
 
 # Constants and configuration
 DEFAULT_GROUP = "-1002499941403"  # Replace with your group ID (-1001234567....) make sure to add the bot to this group as admin
