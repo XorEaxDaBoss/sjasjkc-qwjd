@@ -61,9 +61,9 @@ def get_message(key: str, lang: str = 'en', *args) -> str:
 TOKEN = "7155725509:AAHvM4X2aH7DeTWbzXPlKj1Apy-W0HvIDPk"
 
 # Constants and configuration
-DEFAULT_GROUP = "-1002480822799"  # Replace with your group ID (-1001234567....) make sure to add the bot to this group as admin
+DEFAULT_GROUP = "-1002499941403"  # Replace with your group ID (-1001234567....) make sure to add the bot to this group as admin
 SPECIAL_GROUP = "-1002480822799"  # Replace with your special group ID (-1001234567....) make sure to add the bot to this group as admin
-BOT_OWNER_ID = "1024447089"  # Your Telegram user ID
+BOT_OWNER_ID = "1932632748"  # Your Telegram user ID
 
 # Dictionary mapping special usernames to their target groups (username without @)
 SPECIAL_USERS = {
